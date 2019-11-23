@@ -46,8 +46,6 @@
 #include <rcsc/soccer_math.h>
 #include <rcsc/math_util.h>
 
-#define USE_ADJUST_DASH
-
 // #define DEBUG_PRINT
 
 namespace rcsc {
@@ -89,9 +87,9 @@ Body_GoToPoint2010::execute( PlayerAgent * agent )
     const Vector2D inertia_point = wm.self().inertiaPoint( M_cycle );
     Vector2D target_rel = M_target_point - inertia_point;
 
-    //
-    // already there
-    //
+//     //
+//     // already there
+//     //
     double target_dist = target_rel.r();
     if ( target_dist < M_dist_thr )
     {
@@ -112,23 +110,21 @@ Body_GoToPoint2010::execute( PlayerAgent * agent )
     //
     // omnidir dash
     //
-#ifdef USE_ADJUST_DASH
-    if ( doAdjustDash( agent ) )
-    {
-        return true;
-    }
-#endif
+    // if ( doAdjustDash( agent ) )
+    // {
+    //     return true;
+    // }
 
-    //
-    // turn
-    //
+    // //
+    // // turn
+    // //
     if ( doTurn( agent ) )
     {
         return true;
     }
 
-    //
-    // dash
+    // //
+    // // dash
     //
     if ( doDash( agent ) )
     {
@@ -266,7 +262,7 @@ Body_GoToPoint2010::doAdjustDash( PlayerAgent * agent )
 
     const Vector2D rel_vel = wm.self().vel().rotatedVector( - wm.self().body() );
 
-    const double dash_angle_step = std::max( 15.0, SP.dashAngleStep() );
+    const double dash_angle_step = 10;
     const double min_dash_angle = ( -180.0 < SP.minDashAngle() && SP.maxDashAngle() < 180.0
                                     ? SP.minDashAngle()
                                     : dash_angle_step * static_cast< int >( -180.0 / dash_angle_step ) );
@@ -288,16 +284,6 @@ Body_GoToPoint2010::doAdjustDash( PlayerAgent * agent )
         if ( std::fabs( dir ) > 100.0 ) continue; // Magic Number
 
         const AngleDeg dash_angle = SP.discretizeDashAngle( SP.normalizeDashAngle( dir ) );
-
-        if ( ( dash_angle - target_angle ).abs() > 90.0 )
-        {
-#ifdef DEBUG_PRINT
-            dlog.addText( Logger::ACTION,
-                          "__ dir=%.1f, invalid direction. continue",
-                          dash_angle.degree() );
-#endif
-            continue;
-        }
 
         const double dash_rate = wm.self().dashRate() * SP.dashDirRate( dir );
 
@@ -457,36 +443,36 @@ Body_GoToPoint2010::doTurn( PlayerAgent * agent )
 
     // if target is very near && turn_angle is big && agent has enough stamina,
     // it is useful to reverse accel angle.
-    if ( turn_moment.abs() > max_turn
-         && turn_moment.abs() > 90.0
-         && target_dist < 2.0
-         && wm.self().stamina() > SP.recoverDecThrValue() + 500.0 )
-    {
-        double effective_power = SP.maxDashPower() * wm.self().dashRate();
-        double effective_back_power = SP.minDashPower() * wm.self().dashRate();
-        if ( std::fabs( effective_back_power ) > std::fabs( effective_power ) * 0.75 )
-        {
-            M_back_mode = true;
-            turn_moment += 180.0;
-#ifdef DEBUG_PRINT
-            dlog.addText( Logger::ACTION,
-                          __FILE__": (doTurn) back mode. turn_moment=%.1f",
-                          turn_moment.degree() );
-#endif
-        }
-    }
+//     if ( turn_moment.abs() > max_turn
+//          && turn_moment.abs() > 90.0
+//          && target_dist < 2.0
+//          && wm.self().stamina() > SP.recoverDecThrValue() + 500.0 )
+//     {
+//         double effective_power = SP.maxDashPower() * wm.self().dashRate();
+//         double effective_back_power = SP.minDashPower() * wm.self().dashRate();
+//         if ( std::fabs( effective_back_power ) > std::fabs( effective_power ) * 0.75 )
+//         {
+//             M_back_mode = true;
+//             turn_moment += 180.0;
+// #ifdef DEBUG_PRINT
+//             dlog.addText( Logger::ACTION,
+//                           __FILE__": (doTurn) back mode. turn_moment=%.1f",
+//                           turn_moment.degree() );
+// #endif
+//         }
+//     }
 
     double turn_thr = 180.0;
 // #ifdef USE_ADJUST_DASH
-//     if ( M_dist_thr + adjustable_dist < target_dist )
-//     {
-//         turn_thr = AngleDeg::asin_deg( std::min( 1.0, ( M_dist_thr + adjustable_dist ) / target_dist ) );
-//     }
-// #else
-    if ( M_dist_thr < target_dist )
+    if ( M_dist_thr + adjustable_dist < target_dist )
     {
-        turn_thr = AngleDeg::asin_deg( M_dist_thr / target_dist );
+        turn_thr = AngleDeg::asin_deg( std::min( 1.0, ( M_dist_thr + adjustable_dist ) / target_dist ) );
     }
+// #else
+    // if ( M_dist_thr < target_dist )
+    // {
+    //     turn_thr = AngleDeg::asin_deg( M_dist_thr / target_dist );
+    // }
 // #endif
 
     turn_thr = std::max( M_dir_thr, turn_thr );
@@ -602,7 +588,7 @@ Body_GoToPoint2010::doDash( PlayerAgent * agent )
 #endif
     }
 
-    return agent->doDash( dash_power );
+    return agent->doDash( dash_power, target_rel.th() );
 }
 
 }
